@@ -1,12 +1,16 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";  // Added for navigation
 import "./Register.css";
 import { account } from "../appwrite/config";
+
 const Register = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
+
+  const navigate = useNavigate();  // Added navigation hook
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -15,30 +19,41 @@ const Register = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if(formData.name === "" || formData.email === "" || formData.password === "") {
-        alert("please fill these fields")
-        return
+    if (formData.name === "" || formData.email === "" || formData.password === "") {
+      alert("Please fill all fields");
+      return;
     }
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-    if(!emailRegex.test(formData.email)){
-        alert("Enter valid Email")
+    if (!emailRegex.test(formData.email)) {
+      alert("Enter a valid Email");
+    } else {
+      register();
     }
-    else{
-        register()
-    }
-   
   };
 
   const register = async () => {
     try {
-      // Creating user in Appwrite
-      const {name, email, password} = formData
-      var user = await account.create("unique()",  email, password, name);
+      const { name, email, password } = formData;
+      const user = await account.create("unique()", email, password, name);
       console.log(user);
-      
-      var session = await account.createEmailPasswordSession(email, password)
-      var link = await account.createVerification("http://localhost:5173/Verify")
-      alert("Verification send successfully")
+
+      await account.createEmailPasswordSession(email, password);
+      const link = await account.createVerification("http://localhost:5173/Verify");
+
+      alert("Verification email sent successfully. Please verify your email.");
+
+      // Polling to check if user is verified before redirecting (Added)
+      const interval = setInterval(async () => {
+        try {
+          const verifiedUser = await account.get();
+          if (verifiedUser.emailVerification) {
+            clearInterval(interval);
+            navigate("/Dashboard"); // Navigate after verification
+          }
+        } catch (error) {
+          console.error("Verification check error:", error);
+        }
+      }, 3000); // Check every 3 seconds
     } catch (e) {
       console.log(e);
     }
@@ -48,7 +63,7 @@ const Register = () => {
     <div className="register-container">
       <form className="register-form" onSubmit={handleSubmit}>
         <h2>Register</h2>
-        
+
         <div className="form-group">
           <label htmlFor="name">Name</label>
           <input
@@ -61,7 +76,7 @@ const Register = () => {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="email">Email</label>
           <input
@@ -74,7 +89,7 @@ const Register = () => {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="password">Password</label>
           <input
@@ -87,7 +102,7 @@ const Register = () => {
             required
           />
         </div>
-        
+
         <button type="submit" className="register-button">Register</button>
       </form>
     </div>
